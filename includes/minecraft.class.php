@@ -38,6 +38,45 @@ class Minecraft {
 		return false;
 	}
 	
+	public function connect17($ip, $port = 25565, $timeout = 2, $udp = false, $udp_port = 25565) {
+		$this->udp = false;//set udp to false
+		$this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);//create tcp socket
+		
+		socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO, array(//set socket timeout (SO_SNDTIMEO)
+			'sec' => (int) $timeout,
+			'usec' => 0
+		));
+		
+		socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, array(//set  socket timeout (SO_RCVTIMEO)
+			'sec' => (int) $timeout,
+			'usec' => 0
+		));
+				
+		if ($this->socket === false || @socket_connect($this->socket, $ip, $port) === false) {//attempt connection
+			$this->data = "Server Offline!";//failed to connect, set data to server offline
+			return false;
+		}
+		
+		$length = strlen($ip);
+		$data = pack('cccca*', hexdec($length), 0, 0x04, $length, $ip) . pack('nc', $port, 0x01);
+		socket_send($this->socket, $data, strlen($data), 0); //send the handshake to the server
+		socket_send($this->socket, "\x01\x00", 2, 0);//send request to get server status
+		
+		if($this->readVarInt() < 10) {
+			return false;
+		}
+		
+		socket_read($this->socket, 1);//This will be equal to 0
+		
+		$len = $this->readVarInt();//read json string length
+		$received = @socket_read($this->socket, $len, PHP_NORMAL_READ);//read socket
+		socket_close($this->socket);//close the socket
+		
+		$this->data = json_decode($received, true);//set data to the return
+		
+		return $this->data;//give back data
+	}
+	
 	public function connect($ip, $port = 25565, $timeout = 2, $udp = false, $udp_port = 25565) {
 		if ($udp === true) { //detect udp
 			$this->udp = true;//set global udp to true
@@ -58,63 +97,81 @@ class Minecraft {
 			
 			return $this->data;//return data
 		} else {
-			$this->udp = false;//set udp to false
-			$socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);//create tcp socket
+			$this->data = $this->connect17($ip, $port = 25565, $timeout = 2, $udp = false, $udp_port = 25565);
 			
-			socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, array(//set socket timeout (SO_SNDTIMEO)
-				'sec' => (int) $timeout,
-				'usec' => 0
-			));
-			socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array(//set  socket timeout (SO_RCVTIMEO)
-				'sec' => (int) $timeout,
-				'usec' => 0
-			));
-			
-			if ($socket === false || @socket_connect($socket, $ip, $port) === false) {//attempt connection
-				$this->data = "Server Offline!";//failed to connect, set data to server offline
-				return false;
+			if ($this->data !== false) {
+				$this->data17 = true;//let the script know its json data
+				return $this->data;//give back data
+			} else {
+				$this->udp = false;//set udp to false
+				$this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);//create tcp socket
+				
+				socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO, array(//set socket timeout (SO_SNDTIMEO)
+					'sec' => (int) $timeout,
+					'usec' => 0
+				));
+				socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, array(//set  socket timeout (SO_RCVTIMEO)
+					'sec' => (int) $timeout,
+					'usec' => 0
+				));
+				
+				if ($this->socket === false || @socket_connect($this->socket, $ip, $port) === false) {//attempt connection
+					$this->data = "Server Offline!";//failed to connect, set data to server offline
+					return false;
+				}
+				
+				socket_send($this->socket, "\xFE\x01", 2, 0);//send request to get server status
+				$len = @socket_recv($this->socket, $data, 512, 0);//read the socket for the return
+				socket_close($this->socket);//close the socket
+				
+				if ($len < 4 || $data[0] !== "\xFF") {//check for valid data
+					return false;
+				}
+				
+				$data = substr($data, 3); // Strip packet header (kick message packet and short length)
+				$data = iconv('UTF-16BE', 'UTF-8', $data);//encode the data
+				
+				$this->data = $data;//set data to the return
+				
+				return $this->data;//give back data
 			}
-			
-			socket_send($socket, "\xFE\x01", 2, 0);//send request to get server status
-			$len = @socket_recv($socket, $data, 512, 0);//read the socket for the return
-			socket_close($socket);//close the socket
-			
-			if ($len < 4 || $data[0] !== "\xFF") {//check for valid data
-				return false;
-			}
-			
-			$data = substr($data, 3); // Strip packet header (kick message packet and short length)
-			$data = iconv('UTF-16BE', 'UTF-8', $data);//encode the data
-			
-			$this->data = $data;//set data to the return
-			
-			return $this->data;//give back data
 		}
 	}
 	
 	public function formatData($data) {
-        if ($data[1] === "\xA7" && $data[2] === "\x31") {//detect server 1.3<
-            $data = explode("\x00", $data);//turn data into array
-			
-            $array = array(//set the data into an array thats readable
-                'Protocol' => IntVal($data[1]),
-                'Version' => $data[2],
-                'HostName' => $data[3],
-                'Players' => IntVal($data[4]),
-                'MaxPlayers' => IntVal($data[5])
-            );
-        } else {
-			$data = explode("\xA7", $data);//turn data into array
-			
+		if (isset($this->data17) && $this->data17 === true) {
 			$array = array(//set the data into an array thats readable
-            	'Protocol' => 0,
-            	'Version' => '1.3',
-				'HostName' => SubStr($data[0], 0, -1),
-            	'MaxPlayers' => isset($data[2]) ? IntVal($data[2]) : 0,
-            	'Players' => isset($data[1]) ? IntVal($data[1]) : 0
-       		);
+				'Protocol' => $data['version']['protocol'],
+				'Version' => $data['version']['name'],
+				'HostName' => $data['description'],
+				'Players' => $data['players']['online'],
+				'MaxPlayers' => $data['players']['max'],
+				'favicon' => $data['favicon']
+			);
+		} else {
+			if ($data[1] === "\xA7" && $data[2] === "\x31") {//detect server 1.3<
+				$data = explode("\x00", $data);//turn data into array
+				
+				$array = array(//set the data into an array thats readable
+					'Protocol' => IntVal($data[1]),
+					'Version' => $data[2],
+					'HostName' => $data[3],
+					'Players' => IntVal($data[4]),
+					'MaxPlayers' => IntVal($data[5])
+				);
+			} else {
+				$data = explode("\xA7", $data);//turn data into array
+				
+				$array = array(//set the data into an array thats readable
+					'Protocol' => 0,
+					'Version' => '1.3',
+					'HostName' => SubStr($data[0], 0, -1),
+					'MaxPlayers' => isset($data[2]) ? IntVal($data[2]) : 0,
+					'Players' => isset($data[1]) ? IntVal($data[1]) : 0
+				);
+			}
 		}
-		
+			
 		$array = $this->formatColour($array);//format the colour of the array (adds HTML colours)
 		
 		$this->formatted = $array;//set the formatted array
@@ -166,6 +223,34 @@ class Minecraft {
 		$colour = $colours[$colour];//set the hex colour
 		
 		return "<span style=\"color:{$colour};\">{$string}</span>";//return html
+	}
+	
+	//Function wrote by XPaw - https://github.com/xPaw/
+	private function readVarInt() {
+		$i = 0;
+		$j = 0;
+		
+		while(true) {
+			$k = @socket_read($this->socket, 1);
+			
+			if($k === false) {
+				return 0;
+			}
+			
+			$k = ord($k);
+			
+			$i |= ($k & 0x7F) << $j++ * 7;
+			
+			if($j > 5) {
+				return false;
+			}
+			
+			if(($k & 0x80) != 128) {
+				break;
+			}
+		}
+		
+		return $i;
 	}
 }
 ?>
