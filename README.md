@@ -14,7 +14,7 @@ Dependencies
 ------------
 PHP 5.3.X, MySQL 5.6.X, crontab/schtasks
 
-Optional: Apache/IIS
+Optional: Apache 2, IIS 7
 
 Getting Started
 ===============
@@ -60,7 +60,7 @@ Enabling MCCache
   		*/5 * * * * php FAKEPATH/cache/cache.php ALL
   		0 0 * * * php FAKEPATH/cache/averages.php ALL
 		
-   Edit schtasks (windows systems)
+5. Edit schtasks (windows systems)
 	Open CMD (Command Prompt) and type:
   	
   		schtasks /create /sc minute /mo 5 /tn "MCCache" /tr "PHP_INTERPRITER FAKEPATH\cache\cache.php ALL"
@@ -70,11 +70,11 @@ Viewing Cache data
 ===============
 The simplest way to view cache data is in the web browser using Apache or IIS
 
-From console just type the following (i reccomend having no_html set to true:
+However cach data can be viewed from console by typing the following (i reccomend having no_html set to true):
 
 1. Windows
-    PHP_INTERPRITER FAKEPATH\index.php SERVER
+    PHP_PATH FAKEPATH\index.php SERVER_NAME
 
 2. Linux
-    php FAKEPATH\index.php SERVER
+    php FAKEPATH\index.php SERVER_NAME
 
