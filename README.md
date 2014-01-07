@@ -63,8 +63,8 @@ Enabling MCCache
 5. Edit schtasks (windows systems)
 	Open CMD (Command Prompt) and type:
   	
-  		schtasks /create /sc minute /mo 5 /tn "MCCache" /tr "PHP_INTERPRITER FAKEPATH\cache\cache.php ALL"
-  		schtasks /create /sc hourly /mo 23 /tn "MCCache" /tr "PHP_INTERPRITER FAKEPATH\cache\averages.php ALL"
+  		schtasks /create /sc minute /mo 5 /tn "MCCache" /tr "PHP_PATH FAKEPATH\cache\cache.php ALL"
+  		schtasks /create /sc hourly /mo 23 /tn "MCCache" /tr "PHP_PATH FAKEPATH\cache\averages.php ALL"
 	
 Viewing Cache data
 ===============
