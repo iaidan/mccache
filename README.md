@@ -26,7 +26,7 @@ Installing MySQL & PHP
 
 On Red Hat-based distributions:
 
-  	yum install mysql-server mysql
+  		yum install mysql-server mysql
 		yum install php php-mysql
 	
 On Debian based systems such as Ubuntu:
