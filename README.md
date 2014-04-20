@@ -73,8 +73,10 @@ The simplest way to view cache data is in the web browser using Apache or IIS
 However cach data can be viewed from console by typing the following (i reccomend having no_html set to true):
 
 1. Windows
+
     PHP_PATH FAKEPATH\index.php SERVER_NAME
 
 2. Linux
+
     php FAKEPATH\index.php SERVER_NAME
 
